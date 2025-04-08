@@ -1,0 +1,680 @@
+//archivo html
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Fondo Interactivo</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="background"></div>
+    <svg id="interactive-layer"></svg>
+    <div id="controls">
+        <button class="btn" id="add-book">+ Libro</button>
+        <button class="btn" id="add-note">+ Nota</button>
+    </div>
+    
+    <!-- Modal de confirmación -->
+    <div id="confirm-modal" class="modal">
+        <div class="modal-content">
+            <p id="modal-text">¿Eliminar este elemento?</p>
+            <div class="modal-buttons">
+                <button id="modal-accept">Aceptar</button>
+                <button id="modal-cancel">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Menú contextual -->
+    <div id="context-menu"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/interactjs/dist/interact.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
+
+
+//archivo css
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    height: 100vh;
+    overflow: hidden;
+    font-family: 'Courier New', monospace;
+    position: relative;
+}
+
+#background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url('tu-imagen.jpg');
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+}
+
+#interactive-layer {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 2;
+}
+
+.btn {
+    position: fixed;
+    bottom: 30px;
+    z-index: 3;
+    padding: 12px 25px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 2px solid #fff;
+    color: #000;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s;
+    border-radius: 4px;
+}
+
+#add-book {
+    right: 150px;
+}
+
+#add-note {
+    right: 30px;
+}
+
+.btn:hover {
+    background: #000;
+    color: #fff;
+    transform: translateY(-3px);
+}
+
+.book {
+    stroke: #fff;
+    stroke-width: 2;
+    fill: none;
+    pointer-events: all;
+    cursor: move;
+    transition: transform 0.1s;
+    filter: drop-shadow(0 0 3px rgba(255,255,255,0.3));
+}
+
+.post-it-svg {
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    cursor: grab;
+    overflow: visible;
+}
+
+.note-group {
+    transform-origin: 0 0;
+    overflow: visible;
+}
+
+.post-it-shape {
+    fill: rgba(0,0,0,0.85);
+    stroke: #fff;
+    stroke-width: 2;
+    vector-effect: non-scaling-stroke;
+}
+
+.post-it-text {
+    width: 100%;
+    height: 100%;
+    color: #fff;
+    font-size: 14px;
+    line-height: 1.4;
+    overflow: hidden;
+    padding: 15px;
+    box-sizing: border-box;
+}
+
+.post-it-ribbon {
+    fill: rgba(255,255,255,0.3);
+    stroke: none;
+}
+
+.post-it-svg:active {
+    cursor: grabbing;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 9999;
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    padding: 25px;
+    border: 2px solid #fff;
+    border-radius: 8px;
+    min-width: 300px;
+    color: #fff;
+    text-align: center;
+}
+
+.modal-buttons {
+    margin-top: 20px;
+    display: flex;
+    gap: 15px;
+    justify-content: center;
+}
+
+.modal-buttons button {
+    padding: 8px 25px;
+    border: 2px solid #fff;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.3s;
+}
+
+.modal-buttons button:hover {
+    background: #fff;
+    color: #000;
+}
+
+#context-menu {
+    display: none;
+    position: fixed;
+    z-index: 10000;
+    width: 120px;
+    background: rgba(0,0,0,0.9);
+    border: 2px solid #fff;
+    border-radius: 6px;
+    padding: 10px;
+}
+
+#context-menu button {
+    width: 100%;
+    background: none;
+    border: none;
+    padding: 8px 0;
+    color: #fff;
+    cursor: pointer;
+    font-family: 'Courier New', monospace;
+}
+
+#context-menu button:hover {
+    background: #fff;
+    color: #000;
+}
+
+.resize-handle {
+    position: absolute;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border: 1px solid #000;
+    z-index: 11000;
+    pointer-events: all;
+    transition: all 0.2s;
+    box-shadow: 0 0 5px rgba(0,0,0,0.5);
+}
+
+.resize-handle:hover {
+    transform: scale(1.3);
+    background: #ffeb3b;
+}
+
+.resize-handle.tl { cursor: nwse-resize; left: -6px; top: -6px; }
+.resize-handle.tr { cursor: nesw-resize; right: -6px; top: -6px; }
+.resize-handle.br { cursor: nwse-resize; right: -6px; bottom: -6px; }
+.resize-handle.bl { cursor: nesw-resize; left: -6px; bottom: -6px; }
+
+//archivo .js
+document.addEventListener('DOMContentLoaded', () => {
+    const svgLayer = document.getElementById('interactive-layer');
+    let selectedElement = null;
+    const modal = document.getElementById('confirm-modal');
+    const contextMenu = document.getElementById('context-menu');
+    let currentCloseHandler = null;
+
+    // Cargar estado
+    loadState();
+
+    // Eventos de botones
+    document.getElementById('add-book').addEventListener('click', () => {
+        const x = Math.random() * (window.innerWidth - 100);
+        const y = Math.random() * (window.innerHeight - 150);
+        const newBook = createBook(x, y);
+        svgLayer.appendChild(newBook);
+        makeDraggable(newBook);
+        saveState();
+    });
+
+    document.getElementById('add-note').addEventListener('click', () => {
+        const x = Math.random() * (window.innerWidth - 100);
+        const y = Math.random() * (window.innerHeight - 100);
+        const note = createSVGNote(x, y);
+        document.body.appendChild(note);
+        makeDraggable(note);
+        saveState();
+    });
+
+    function createBook(x, y) {
+        const ns = "http://www.w3.org/2000/svg";
+        const book = document.createElementNS(ns, 'rect');
+        book.setAttribute('x', x);
+        book.setAttribute('y', y);
+        book.setAttribute('width', '80');
+        book.setAttribute('height', '120');
+        book.setAttribute('rx', '5');
+        book.classList.add('book');
+        book.addEventListener('dblclick', (e) => {
+            e.stopPropagation();
+            window.open('D:/', '_blank');
+        });
+        return book;
+    }
+
+    function createSVGNote(x, y) {
+        const svgns = "http://www.w3.org/2000/svg";
+        const note = document.createElementNS(svgns, 'svg');
+        note.classList.add('post-it-svg');
+        note.style.left = `${x}px`;
+        note.style.top = `${y}px`;
+        note.setAttribute('width', '180');
+        note.setAttribute('height', '180');
+        note.setAttribute('viewBox', '0 0 180 180');
+        note.setAttribute('preserveAspectRatio', 'none');
+
+        const group = document.createElementNS(svgns, 'g');
+        group.classList.add('note-group');
+
+        const poly = document.createElementNS(svgns, 'polygon');
+        poly.classList.add('post-it-shape');
+        poly.setAttribute('points', '0,0 180,0 180,180 0,180');
+        poly.setAttribute('fill-rule', 'evenodd');
+        group.appendChild(poly);
+
+        const ribbon = document.createElementNS(svgns, 'rect');
+        ribbon.classList.add('post-it-ribbon');
+        ribbon.setAttribute('x', '65');
+        ribbon.setAttribute('y', '0');
+        ribbon.setAttribute('width', '50');
+        ribbon.setAttribute('height', '10');
+        group.appendChild(ribbon);
+
+        const fo = document.createElementNS(svgns, 'foreignObject');
+        fo.setAttribute('x', '0');
+        fo.setAttribute('y', '0');
+        fo.setAttribute('width', '180');
+        fo.setAttribute('height', '180');
+        const div = document.createElement('div');
+        div.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+        div.classList.add('post-it-text');
+        div.contentEditable = "true";
+        div.innerText = "Nota nueva ☺";
+        div.addEventListener('input', () => autoResize(note));
+        div.addEventListener('blur', () => {
+            autoResize(note);
+            saveState();
+        });
+        fo.appendChild(div);
+        group.appendChild(fo);
+
+        note.appendChild(group);
+        note.dataset.shape = poly.getAttribute('points');
+
+        note.addEventListener('dblclick', (e) => {
+            if (note.classList.contains('modifying-shape')) {
+                finishShapeModification(note);
+                e.stopPropagation();
+            }
+        });
+        return note;
+    }
+
+    function finishShapeModification(note) {
+        note.classList.remove('modifying-shape');
+        removeResizeHandles();
+        if (currentCloseHandler) {
+            document.removeEventListener('dblclick', currentCloseHandler);
+            currentCloseHandler = null;
+        }
+        saveState();
+    }
+
+    function autoResize(note) {
+        const textDiv = note.querySelector('.post-it-text');
+        if (!textDiv) return;
+        
+        const padding = 20;
+        const newWidth = Math.max(180, textDiv.scrollWidth + padding);
+        const newHeight = Math.max(180, textDiv.scrollHeight + padding);
+        
+        if (newWidth > parseFloat(note.getAttribute('width'))) {
+            note.setAttribute('width', newWidth);
+            note.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
+            note.querySelector('foreignObject').setAttribute('width', newWidth);
+        }
+        
+        if (newHeight > parseFloat(note.getAttribute('height'))) {
+            note.setAttribute('height', newHeight);
+            note.setAttribute('viewBox', `0 0 ${newWidth} ${newHeight}`);
+            note.querySelector('foreignObject').setAttribute('height', newHeight);
+        }
+
+        if (!note.classList.contains('modifying-shape')) {
+            updateNoteShape(note, [
+                [0,0], [newWidth,0], 
+                [newWidth,newHeight], [0,newHeight]
+            ]);
+        }
+    }
+
+    function makeDraggable(element) {
+        interact(element).draggable({
+            inertia: false,
+            listeners: {
+                start(event) {
+                    if (element.classList.contains('modifying-shape')) return;
+                    element.classList.add('dragging');
+                    element.style.transition = 'none';
+                },
+                move(event) {
+                    if (element.classList.contains('modifying-shape')) return;
+                    const deltaX = event.dx;
+                    const deltaY = event.dy;
+                    const currentX = parseFloat(element.style.left) || 0;
+                    const currentY = parseFloat(element.style.top) || 0;
+                    element.style.left = `${currentX + deltaX}px`;
+                    element.style.top = `${currentY + deltaY}px`;
+                },
+                end(event) {
+                    if (element.classList.contains('modifying-shape')) return;
+                    element.classList.remove('dragging');
+                    element.style.transition = '';
+                    saveState();
+                }
+            }
+        });
+    }
+
+    function saveState() {
+        const state = {
+            books: Array.from(document.querySelectorAll('.book')).map(book => ({
+                x: book.getAttribute('x'),
+                y: book.getAttribute('y')
+            })),
+            notes: Array.from(document.querySelectorAll('.post-it-svg')).map(note => ({
+                x: note.style.left,
+                y: note.style.top,
+                width: note.getAttribute('width'),
+                height: note.getAttribute('height'),
+                content: note.querySelector('.post-it-text').innerText,
+                shape: note.dataset.shape || ""
+            }))
+        };
+        localStorage.setItem('wallpaperState', JSON.stringify(state));
+    }
+
+    function loadState() {
+        const saved = JSON.parse(localStorage.getItem('wallpaperState'));
+        if (saved) {
+            saved.books.forEach(book => {
+                const newBook = createBook(book.x, book.y);
+                svgLayer.appendChild(newBook);
+                makeDraggable(newBook);
+            });
+
+            saved.notes.forEach(noteData => {
+                const newNote = createSVGNote(
+                    parseFloat(noteData.x.replace('px', '')),
+                    parseFloat(noteData.y.replace('px', ''))
+                );
+                newNote.setAttribute('width', noteData.width || '180');
+                newNote.setAttribute('height', noteData.height || '180');
+                newNote.setAttribute('viewBox', `0 0 ${noteData.width || '180'} ${noteData.height || '180'}`);
+                newNote.querySelector('.post-it-text').innerText = noteData.content;
+                newNote.querySelector('foreignObject').setAttribute('width', noteData.width || '180');
+                newNote.querySelector('foreignObject').setAttribute('height', noteData.height || '180');
+                
+                if (noteData.shape) {
+                    updateNoteShape(newNote, 
+                        noteData.shape.split(' ').map(pt => pt.split(',').map(Number))
+                    );
+                }
+                
+                document.body.appendChild(newNote);
+                makeDraggable(newNote);
+            });
+        }
+    }
+
+    function updateNoteShape(note, points) {
+        const poly = note.querySelector('.post-it-shape');
+        poly.setAttribute('points', points.map(pt => pt.join(',')).join(' '));
+        note.dataset.shape = poly.getAttribute('points');
+    }
+
+    function showConfirmation(message, callback) {
+        modal.style.display = 'block';
+        document.getElementById('modal-text').textContent = message;
+
+        const handleResponse = (confirmed) => {
+            modal.style.display = 'none';
+            callback(confirmed);
+            document.getElementById('modal-accept').onclick = null;
+            document.getElementById('modal-cancel').onclick = null;
+        };
+
+        document.getElementById('modal-accept').onclick = () => handleResponse(true);
+        document.getElementById('modal-cancel').onclick = () => handleResponse(false);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Delete' && document.activeElement.closest('.post-it-svg')) {
+            e.preventDefault();
+            const note = document.activeElement.closest('.post-it-svg');
+            showConfirmation('¿Eliminar esta nota?', (confirmed) => {
+                if (confirmed) {
+                    note.remove();
+                    saveState();
+                }
+            });
+        }
+    });
+
+    document.addEventListener('contextmenu', (e) => {
+        if (e.target.classList.contains('book')) {
+            e.preventDefault();
+            selectedElement = e.target;
+            
+            const menuWidth = 120, menuHeight = 45;
+            let left = e.clientX, top = e.clientY;
+            
+            if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth - 5;
+            if (top + menuHeight > window.innerHeight) top = window.innerHeight - menuHeight - 5;
+            
+            contextMenu.innerHTML = `<div class="context-content">
+                    <button id="delete-book">Eliminar</button>
+                </div>`;
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${left}px`;
+            contextMenu.style.top = `${top}px`;
+            
+            document.getElementById('delete-book').addEventListener('click', (e) => {
+                e.stopPropagation();
+                contextMenu.style.display = 'none';
+                showConfirmation('¿Eliminar este libro?', (confirmed) => {
+                    if (confirmed) {
+                        selectedElement.remove();
+                        saveState();
+                    }
+                });
+            });
+        } else if (e.target.closest('.post-it-svg')) {
+            e.preventDefault();
+            selectedElement = e.target.closest('.post-it-svg');
+            
+            const menuWidth = 120, menuHeight = 90;
+            let left = e.clientX, top = e.clientY;
+            
+            if (left + menuWidth > window.innerWidth) left = window.innerWidth - menuWidth - 5;
+            if (top + menuHeight > window.innerHeight) top = window.innerHeight - menuHeight - 5;
+            
+            contextMenu.innerHTML = `<div class="context-content">
+                    <button id="modify-shape">Modificar forma</button>
+                    <button id="delete-note">Eliminar nota</button>
+                </div>`;
+            contextMenu.style.display = 'block';
+            contextMenu.style.left = `${left}px`;
+            contextMenu.style.top = `${top}px`;
+            
+            document.getElementById('modify-shape').addEventListener('click', () => {
+                contextMenu.style.display = 'none';
+                enableShapeModification(selectedElement);
+            });
+            
+            document.getElementById('delete-note').addEventListener('click', () => {
+                contextMenu.style.display = 'none';
+                showConfirmation('¿Eliminar esta nota?', (confirmed) => {
+                    if (confirmed) {
+                        selectedElement.remove();
+                        saveState();
+                    }
+                });
+            });
+        }
+    });
+
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#context-menu')) {
+            contextMenu.style.display = 'none';
+        }
+    });
+
+    function enableShapeModification(note) {
+        if (note.classList.contains('modifying-shape')) return;
+        
+        const group = note.querySelector('.note-group');
+        note.classList.add('modifying-shape');
+        removeResizeHandles();
+
+        const width = parseFloat(note.getAttribute('width'));
+        const height = parseFloat(note.getAttribute('height'));
+        const src = [[0,0], [width,0], [width,height], [0,height]];
+
+        let dst;
+        if (note.dataset.shape && note.dataset.shape.trim() !== "") {
+            dst = note.dataset.shape.split(' ').map(pt => {
+                const [x, y] = pt.split(',').map(Number);
+                return [x || 0, y || 0];
+            });
+            if (dst.length !== 4) dst = src.slice();
+        } else {
+            dst = src.slice();
+        }
+
+        const handles = [];
+        for (let i = 0; i < 4; i++) {
+            const handle = document.createElement('div');
+            handle.className = `resize-handle ${['tl','tr','br','bl'][i]}`;
+            const noteRect = note.getBoundingClientRect();
+            handle.style.left = `${noteRect.left + dst[i][0]}px`;
+            handle.style.top = `${noteRect.top + dst[i][1]}px`;
+            document.body.appendChild(handle);
+            handles.push({handle, index: i});
+        }
+
+        function updateTransform() {
+            const T = computeAffineTransform(src, dst);
+            const matrix = `${T[0]},${T[3]},${T[1]},${T[4]},${T[2]},${T[5]}`;
+            group.setAttribute('transform', `matrix(${matrix})`);
+            updateNoteShape(note, dst);
+        }
+
+        handles.forEach(({handle, index}) => {
+            handle.addEventListener('mousedown', (e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                const startX = e.clientX;
+                const startY = e.clientY;
+                const startPt = [...dst[index]];
+                
+                function doModify(ev) {
+                    const diffX = ev.clientX - startX;
+                    const diffY = ev.clientY - startY;
+                    dst[index][0] = Math.max(0, startPt[0] + diffX);
+                    dst[index][1] = Math.max(0, startPt[1] + diffY);
+                    
+                    handle.style.left = `${startX + diffX}px`;
+                    handle.style.top = `${startY + diffY}px`;
+                    
+                    updateTransform();
+                }
+                
+                function stopModify() {
+                    document.removeEventListener('mousemove', doModify);
+                    document.removeEventListener('mouseup', stopModify);
+                }
+                
+                document.addEventListener('mousemove', doModify);
+                document.addEventListener('mouseup', stopModify);
+            });
+        });
+
+        // Configurar cierre con doble click fuera
+        currentCloseHandler = (e) => {
+            if (!e.target.closest('.post-it-svg') && !e.target.closest('.resize-handle')) {
+                finishShapeModification(note);
+            }
+        };
+        document.addEventListener('dblclick', currentCloseHandler);
+    }
+
+    function removeResizeHandles() {
+        document.querySelectorAll('.resize-handle').forEach(h => h.remove());
+    }
+
+    function computeAffineTransform(srcPts, dstPts) {
+        const X = [
+            [srcPts[0][0], srcPts[0][1], 1],
+            [srcPts[1][0], srcPts[1][1], 1],
+            [srcPts[2][0], srcPts[2][1], 1]
+        ];
+        const U = [dstPts[0][0], dstPts[1][0], dstPts[2][0]];
+        const V = [dstPts[0][1], dstPts[1][1], dstPts[2][1]];
+
+        function det3(m) {
+            return m[0][0]*(m[1][1]*m[2][2]-m[1][2]*m[2][1])
+                 - m[0][1]*(m[1][0]*m[2][2]-m[1][2]*m[2][0])
+                 + m[0][2]*(m[1][0]*m[2][1]-m[1][1]*m[2][0]);
+        }
+        const D = det3(X);
+        if (Math.abs(D) < 1e-6) return [1,0,0,0,1,0];
+        
+        function solve3(X, Y) {
+            const M1 = [[Y[0], X[0][1], X[0][2]], [Y[1], X[1][1], X[1][2]], [Y[2], X[2][1], X[2][2]]];
+            const M2 = [[X[0][0], Y[0], X[0][2]], [X[1][0], Y[1], X[1][2]], [X[2][0], Y[2], X[2][2]]];
+            const M3 = [[X[0][0], X[0][1], Y[0]], [X[1][0], X[1][1], Y[1]], [X[2][0], X[2][1], Y[2]]];
+            return [det3(M1)/D, det3(M2)/D, det3(M3)/D];
+        }
+        
+        const [a, b, c] = solve3(X, U);
+        const [d, e, f] = solve3(X, V);
+        return [a, b, c, d, e, f];
+    }
+});
